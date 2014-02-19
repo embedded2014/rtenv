@@ -2,3 +2,4 @@ main.bin
 main.elf
 main.list
 gdb.txt
+tlist*
