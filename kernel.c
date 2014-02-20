@@ -4,6 +4,7 @@
 #include "syscall.h"
 
 #include <stddef.h>
+#include <stdarg.h>
 
 void *memcpy(void *dest, const void *src, size_t n);
 
@@ -107,8 +108,9 @@ void show_task_info(int argc, char *argv[]);
 void show_man_page(int argc, char *argv[]);
 void show_history(int argc, char *argv[]);
 
-/* Others */
+/* Printing function */
 void print_to_console( const char *str );
+int printf( const char *format, ... );
 
 /* Enumeration for command types. */
 enum {
@@ -396,6 +398,52 @@ void print_to_console( const char *str )
 	write( fdout, str, strlen(str) + 1 );
 }
 
+int printf( const char *format, ... )
+{
+	va_list ap;
+	char ch[2] = { '0', '\0' }, *ap_str, itoa_buf[32];
+	const char *f = format;
+	
+	va_start( ap, format );
+
+	/* Parsing the formatted string */
+	while ( *f != '\0' )
+	{
+		/* Normal text. */
+		if ( *f != '%' )
+		{
+			ch[0] = *f;
+			print_to_console( ch );
+		}
+		else
+		{
+			/* Discard '%' and get formatted indicator. */
+			switch( *++f )
+			{
+				case 's':	/* String */
+				case 'S':
+					ap_str = va_arg( ap, char * );
+					print_to_console( ap_str );
+					break;
+				case 'c':	/* Character */
+				case 'C':
+					ch[0] = va_arg( ap, int );
+					print_to_console( ch );
+					break;
+				case 'i':	/* Integer */
+				case 'I':
+					itoa( va_arg( ap, int ), itoa_buf, 10 );
+					print_to_console( itoa_buf );
+					break;
+				default:
+					break;
+			}	// end of switch( *++f )
+		}	// end of else( *f == '%' )
+		/* Switch to the next character. */
+		++f;
+	}	// end of while( *f != '\0' )
+}	// end of printf() func
+
 void serial_readwrite_task()
 {
 	int fdout;
@@ -567,11 +615,8 @@ void check_keyword()
 			break;
 		}
 	}
-	if (i == CMD_COUNT) {
-		print_to_console( argv[0] );
-		print_to_console( ": command not found" );
-		print_to_console( next_line );
-	}
+	if (i == CMD_COUNT)
+		printf( "%s: command not found\n\r", argv[0] );
 }
 
 void find_events()
@@ -681,53 +726,22 @@ void export_envvar(int argc, char *argv[])
 //ps
 void show_task_info(int argc, char* argv[])
 {
-	char ps_message[]="PID     STATUS       PRIORITY";
-	int task_i;
-	int task;
-
-	print_to_console( ps_message );
-	print_to_console( next_line );
+	int task_i, task;
+	char *task_status[] = {
+		"READY",
+		"W_WRITE",
+		"W_READ",
+		"W_INTR",
+		"W_TIME"
+	};
+	/* The title of the list */
+	printf( "PID     STATUS       PRIORITY\n\r" );
 
 	for (task_i = 0; task_i < task_count; task_i++) {
-		char task_info_pid[2];
-		int  task_info_status;
-		char task_info_priority[3];
-
-		/* Get the PID of the task. */
-		task_info_pid[0]='0'+tasks[task_i].pid;
-		task_info_pid[1]='\0';
-		/* Get the status ID of the task. */
-		task_info_status = tasks[task_i].status;
-		/* Get priority and convert it to string. */
-		itoa(tasks[task_i].priority, task_info_priority, 10);
-
-		/* Task PID */
-		print_to_console( task_info_pid );
-		print_to_console( "\t" );
-		/* Task Status */
-		switch ( task_info_status )
-		{
-			case TASK_READY:
-				print_to_console( "READY" );
-				break;
-			case TASK_WAIT_WRITE:
-				print_to_console( "W_WRITE" );
-				break;
-			case TASK_WAIT_READ:
-				print_to_console( "W_READ" );
-				break;
-			case TASK_WAIT_INTR:
-				print_to_console( "W_INTR" );
-				break;
-			case TASK_WAIT_TIME:
-				print_to_console( "W_TIME" );
-				break;
-		}
-		print_to_console( "\t\t" );
-		/* Task priority */
-		print_to_console( task_info_priority );
-
-		print_to_console( next_line );
+		printf( "%i\t%s\t\t%i\n\r", \
+				tasks[task_i].pid, \
+				task_status[tasks[task_i].status], \
+				tasks[task_i].priority );
 	}
 }
 
@@ -757,15 +771,11 @@ void itoa(int n, char *dst, int base)
 
 void show_cmd_info(int argc, char* argv[])
 {
-	const char help_desp[] = "This system has commands as follow\n\r\0";
 	int i;
 
-	write(fdout, &help_desp, sizeof(help_desp));
+	printf( "This system had commands as follow\n\r" );
 	for (i = 0; i < CMD_COUNT; i++) {
-		write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-		write(fdout, ": ", 3);
-		write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-		write(fdout, next_line, 3);
+		printf( "%s: %s\n\r", cmd_data[i].cmd, cmd_data[i].description );
 	}
 }
 
@@ -807,12 +817,7 @@ void show_man_page(int argc, char *argv[])
 	if (i >= CMD_COUNT)
 		return;
 
-	print_to_console( "NAME: " );
-	print_to_console( cmd_data[i].cmd );
-	print_to_console( next_line );
-	print_to_console( "DESCRIPTION: " );
-	print_to_console( cmd_data[i].description );
-	print_to_console( next_line );
+	printf( "NAME: %s\n\rDESCRIPTION: %s\n\r", cmd_data[i].cmd, cmd_data[i].description );
 }
 
 void show_history(int argc, char *argv[])
@@ -821,8 +826,7 @@ void show_history(int argc, char *argv[])
 
 	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
 		if (cmd[i % HISTORY_COUNT][0]) {
-			print_to_console( cmd[ i % HISTORY_COUNT ] );
-			print_to_console( next_line );
+			printf( "%s\n\r", cmd[ i % HISTORY_COUNT ] );
 		}
 	}
 }
