@@ -107,6 +107,9 @@ void show_task_info(int argc, char *argv[]);
 void show_man_page(int argc, char *argv[]);
 void show_history(int argc, char *argv[]);
 
+/* Others */
+void print_to_console( const char *str );
+
 /* Enumeration for command types. */
 enum {
 	CMD_ECHO = 0,
@@ -387,6 +390,12 @@ void queue_str_task2()
 	queue_str_task("Hello 2\n", 50);
 }
 
+void print_to_console( const char *str )
+{
+	int fdout = mq_open("/tmp/mqueue/out", 0);
+	write( fdout, str, strlen(str) + 1 );
+}
+
 void serial_readwrite_task()
 {
 	int fdout;
@@ -450,17 +459,20 @@ void serial_test_task()
 		write(fdout, hint, hint_length);
 
 		while (1) {
+			/* Get a character from keyboard. */
 			read(fdin, put_ch, 1);
 
+			/* New line recieved */
 			if (put_ch[0] == '\r' || put_ch[0] == '\n') {
 				*p = '\0';
-				write(fdout, next_line, 3);
+				print_to_console( next_line );
 				break;
 			}
+			/* Back space recieved */
 			else if (put_ch[0] == BACKSPACE || put_ch[0] == '\b') {
 				if (p > cmd[cur_his]) {
 					p--;
-					write(fdout, "\b \b", 4);
+					print_to_console( "\b \b" );
 				}
 			}
 			/* Function/Arrow Key pressed. */
@@ -480,9 +492,10 @@ void serial_test_task()
 						read( fdin, put_ch, 1 );
 				}
 			}
+			/* Vaild characters: Get the character and display it */
 			else if (p - cmd[cur_his] < CMDBUF_SIZE - 1) {
 				*p++ = put_ch[0];
-				write(fdout, put_ch, 2);
+				print_to_console( put_ch );
 			}
 		}
 		check_keyword();	
@@ -555,9 +568,9 @@ void check_keyword()
 		}
 	}
 	if (i == CMD_COUNT) {
-		write(fdout, argv[0], strlen(argv[0]) + 1);
-		write(fdout, ": command not found", 20);
-		write(fdout, next_line, 3);
+		print_to_console( argv[0] );
+		print_to_console( ": command not found" );
+		print_to_console( next_line );
 	}
 }
 
@@ -668,33 +681,53 @@ void export_envvar(int argc, char *argv[])
 //ps
 void show_task_info(int argc, char* argv[])
 {
-	char ps_message[]="PID STATUS PRIORITY";
-	int ps_message_length = sizeof(ps_message);
+	char ps_message[]="PID     STATUS       PRIORITY";
 	int task_i;
 	int task;
 
-	write(fdout, &ps_message , ps_message_length);
-	write(fdout, &next_line , 3);
+	print_to_console( ps_message );
+	print_to_console( next_line );
 
 	for (task_i = 0; task_i < task_count; task_i++) {
 		char task_info_pid[2];
-		char task_info_status[2];
+		int  task_info_status;
 		char task_info_priority[3];
 
+		/* Get the PID of the task. */
 		task_info_pid[0]='0'+tasks[task_i].pid;
 		task_info_pid[1]='\0';
-		task_info_status[0]='0'+tasks[task_i].status;
-		task_info_status[1]='\0';			
-
+		/* Get the status ID of the task. */
+		task_info_status = tasks[task_i].status;
+		/* Get priority and convert it to string. */
 		itoa(tasks[task_i].priority, task_info_priority, 10);
 
-		write(fdout, &task_info_pid , 2);
-		write_blank(3);
-			write(fdout, &task_info_status , 2);
-		write_blank(5);
-		write(fdout, &task_info_priority , 3);
+		/* Task PID */
+		print_to_console( task_info_pid );
+		print_to_console( "\t" );
+		/* Task Status */
+		switch ( task_info_status )
+		{
+			case TASK_READY:
+				print_to_console( "READY" );
+				break;
+			case TASK_WAIT_WRITE:
+				print_to_console( "W_WRITE" );
+				break;
+			case TASK_WAIT_READ:
+				print_to_console( "W_READ" );
+				break;
+			case TASK_WAIT_INTR:
+				print_to_console( "W_INTR" );
+				break;
+			case TASK_WAIT_TIME:
+				print_to_console( "W_TIME" );
+				break;
+		}
+		print_to_console( "\t\t" );
+		/* Task priority */
+		print_to_console( task_info_priority );
 
-		write(fdout, &next_line , 3);
+		print_to_console( next_line );
 	}
 }
 
@@ -751,13 +784,13 @@ void show_echo(int argc, char* argv[])
 	}
 
 	for (; i < argc; i++) {
-		write(fdout, argv[i], strlen(argv[i]) + 1);
+		print_to_console( argv[i] );
 		if (i < argc - 1)
-			write(fdout, " ", 2);
+			print_to_console( " " );
 	}
 
 	if (~flag & _n)
-		write(fdout, next_line, 3);
+		print_to_console( next_line );
 }
 
 //man
@@ -774,12 +807,12 @@ void show_man_page(int argc, char *argv[])
 	if (i >= CMD_COUNT)
 		return;
 
-	write(fdout, "NAME: ", 7);
-	write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-	write(fdout, next_line, 3);
-	write(fdout, "DESCRIPTION: ", 14);
-	write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-	write(fdout, next_line, 3);
+	print_to_console( "NAME: " );
+	print_to_console( cmd_data[i].cmd );
+	print_to_console( next_line );
+	print_to_console( "DESCRIPTION: " );
+	print_to_console( cmd_data[i].description );
+	print_to_console( next_line );
 }
 
 void show_history(int argc, char *argv[])
@@ -788,8 +821,8 @@ void show_history(int argc, char *argv[])
 
 	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
 		if (cmd[i % HISTORY_COUNT][0]) {
-			write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
-			write(fdout, next_line, 3);
+			print_to_console( cmd[ i % HISTORY_COUNT ] );
+			print_to_console( next_line );
 		}
 	}
 }
