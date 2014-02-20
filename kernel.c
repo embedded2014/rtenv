@@ -431,6 +431,9 @@ void serial_readwrite_task()
 	}
 }
 
+#define ESC			27
+#define BACKSPACE	127
+
 void serial_test_task()
 {
 	char put_ch[2]={'0','\0'};
@@ -454,10 +457,27 @@ void serial_test_task()
 				write(fdout, next_line, 3);
 				break;
 			}
-			else if (put_ch[0] == 127 || put_ch[0] == '\b') {
+			else if (put_ch[0] == BACKSPACE || put_ch[0] == '\b') {
 				if (p > cmd[cur_his]) {
 					p--;
 					write(fdout, "\b \b", 4);
+				}
+			}
+			/* Function/Arrow Key pressed. */
+			else if ( put_ch[0] == ESC )
+			{
+				/* Function Key: ESC[1~ ~ ESC[6~
+				 * Arrow Key: ESC[A ~ ESC[D
+				 */
+				read( fdin, put_ch, 1 );
+
+				if ( put_ch[0] == '[' )
+				{
+					read( fdin, put_ch, 1 );
+					/* Function Key */
+					if ( put_ch[0] > '0' && put_ch[0] < '7' )
+						/* Discard '~' */
+						read( fdin, put_ch, 1 );
 				}
 			}
 			else if (p - cmd[cur_his] < CMDBUF_SIZE - 1) {

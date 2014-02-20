@@ -3,3 +3,4 @@ main.elf
 main.list
 gdb.txt
 tlist*
+*.swp
