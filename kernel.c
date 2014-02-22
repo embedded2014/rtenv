@@ -106,6 +106,7 @@ void show_cmd_info(int argc, char *argv[]);
 void show_task_info(int argc, char *argv[]);
 void show_man_page(int argc, char *argv[]);
 void show_history(int argc, char *argv[]);
+void exe_user_program(int argc, char *argv[]);
 
 /* Enumeration for command types. */
 enum {
@@ -115,6 +116,7 @@ enum {
 	CMD_HISTORY,
 	CMD_MAN,
 	CMD_PS,
+        CMD_EXEC,
 	CMD_COUNT
 } CMD_TYPE;
 /* Structure for command handler. */
@@ -129,7 +131,8 @@ const hcmd_entry cmd_data[CMD_COUNT] = {
 	[CMD_HELP] = {.cmd = "help", .func = show_cmd_info, .description = "List all commands you can use."},
 	[CMD_HISTORY] = {.cmd = "history", .func = show_history, .description = "Show latest commands entered."}, 
 	[CMD_MAN] = {.cmd = "man", .func = show_man_page, .description = "Manual pager."},
-	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."}
+	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."},
+        [CMD_EXEC] = {.cmd = "exec", .func = exe_user_program, .description = "execute user program."}
 };
 
 /* Structure for environment variables. */
@@ -677,8 +680,18 @@ void show_task_info(int argc, char* argv[])
 		write(fdout, &next_line , 3);
 	}
 }
+/*exec*/
+void exe_user_program(int argc, char *argv[])
+{
+   int (*user_program)();
+   int result=0;
+   user_program = 0x0000f000; 
+   result = user_program(); 
+   
+}
 
-//this function helps to show int
+
+/*this function helps to show int*/
 
 void itoa(int n, char *dst, int base)
 {
