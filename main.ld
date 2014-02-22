@@ -17,7 +17,13 @@ SECTIONS
 		*(.rodata*)
 		_sidata = .;
 	} >FLASH
-
+      
+       /*load user_progam.o at _userprogram */
+       .userprogram 0x0000f000:
+       {
+          user_program.o
+          _sidata = .;
+       }
 	/* Initialized data will initially be loaded in FLASH at the end of the .text section. */
     .data : AT (_sidata) 
     {
