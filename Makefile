@@ -49,7 +49,8 @@ main.bin: kernel.c context_switch.s syscall.s syscall.h user_program.o
 user_program.o : user_program.c
 	$(CROSS_COMPILE)gcc \
 		-e test_main -nostartfiles -nostdlib \
-		-o user_program.o user_program.c
+		-mcpu=cortex-m3 -mthumb \
+                -o user_program.o user_program.c
 
 qemu: main.bin $(QEMU_STM32)
 	$(QEMU_STM32) -M stm32-p103 -kernel main.bin
