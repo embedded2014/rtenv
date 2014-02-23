@@ -4,7 +4,7 @@
 #include "syscall.h"
 
 #include <stddef.h>
-
+#include "link.h"
 void *memcpy(void *dest, const void *src, size_t n);
 
 int strcmp(const char *a, const char *b) __attribute__ ((naked));
@@ -685,7 +685,7 @@ void exe_user_program(int argc, char *argv[])
 {
    int (*user_program)();
    int result=0;
-   user_program = 0x0000010d; 
+   user_program = &user_program_start; 
    result = user_program(); 
    
 }
