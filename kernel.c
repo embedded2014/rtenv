@@ -728,17 +728,17 @@ void show_task_info(int argc, char* argv[])
 {
 	int task_i, task;
 	char *task_status[] = {
-		"READY",
-		"W_WRITE",
-		"W_READ",
-		"W_INTR",
-		"W_TIME"
+		"READY\t",
+		"WAIT_WRITE",
+		"WAIT_READ",
+		"WAIT_INTR",
+		"WAIT_TIME"
 	};
 	/* The title of the list */
-	printf( "PID     STATUS       PRIORITY\n\r" );
+	printf( "PID     STATUS\t    PRIORITY\n\r" );
 
 	for (task_i = 0; task_i < task_count; task_i++) {
-		printf( "%i\t%s\t\t%i\n\r", \
+		printf( "%i\t%s\t%i\n\r", \
 				tasks[task_i].pid, \
 				task_status[tasks[task_i].status], \
 				tasks[task_i].priority );
