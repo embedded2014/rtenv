@@ -470,6 +470,8 @@ int printf( const char *format, ... )
 					break;
 				case 'i':	/* Integer */
 				case 'I':
+				case 'u':
+				case 'U':
 					itoa( va_arg( ap, int ), itoa_buf, 10 );
 					p_buffer_ptr = strapp( p_buffer_ptr, itoa_buf );
 					break;
