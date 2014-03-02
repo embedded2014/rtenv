@@ -108,8 +108,12 @@ void show_task_info(int argc, char *argv[]);
 void show_man_page(int argc, char *argv[]);
 void show_history(int argc, char *argv[]);
 
+/* String funrction */
+char *strapp( char *dest_end, const char *source );
+
 /* Printing function */
 void print_to_console( const char *str );
+void flush();
 int printf( const char *format, ... );
 
 /* Enumeration for command types. */
@@ -398,6 +402,42 @@ void print_to_console( const char *str )
 	write( fdout, str, strlen(str) + 1 );
 }
 
+/* @param dest_end A char pointer which points to 
+ * the end of the destination string.
+ * @param source A char pointer which points to the
+ * begin of the source string.
+ * strapp() is different from c standard strcat(),
+ * which strapp() will return a char-pointer points 
+ * to the end of the destination string. */
+char *strapp( char *dest_end, const char *source )
+{
+	char *d_e = dest_end;
+	const char *s = source;
+
+	while( ( *d_e++ = *s++ ) != '\0' )
+		;
+
+	return d_e;
+}
+
+/* To not to call print_to_console function frequently,
+ * use buffered string. If the buffer is full, a new-line
+ * is added to buffer, or flush() is called, the buffer
+ * would be sent to the print_to_console() and then cleared. */
+#define PRINTF_BUF_LEN	100
+char p_buffer[ PRINTF_BUF_LEN + 1 ];
+char *p_buffer_ptr = p_buffer;
+int p_buffer_i = 0;
+
+void flush()
+{
+	/* Append a null character. */
+	*p_buffer_ptr = '\0';
+	print_to_console( p_buffer );
+	/* Reset index.(Clear the buffer) */
+	p_buffer_ptr = p_buffer;
+}
+
 int printf( const char *format, ... )
 {
 	va_list ap;
@@ -412,8 +452,7 @@ int printf( const char *format, ... )
 		/* Normal text. */
 		if ( *f != '%' )
 		{
-			ch[0] = *f;
-			print_to_console( ch );
+			*p_buffer_ptr++ = *f;
 		}
 		else
 		{
@@ -423,22 +462,26 @@ int printf( const char *format, ... )
 				case 's':	/* String */
 				case 'S':
 					ap_str = va_arg( ap, char * );
-					print_to_console( ap_str );
+					p_buffer_ptr = strapp( p_buffer_ptr, ap_str );
 					break;
 				case 'c':	/* Character */
 				case 'C':
-					ch[0] = va_arg( ap, int );
-					print_to_console( ch );
+					*p_buffer_ptr++ = va_arg( ap, int );
 					break;
 				case 'i':	/* Integer */
 				case 'I':
 					itoa( va_arg( ap, int ), itoa_buf, 10 );
-					print_to_console( itoa_buf );
+					p_buffer_ptr = strapp( p_buffer_ptr, itoa_buf );
 					break;
 				default:
 					break;
 			}	// end of switch( *++f )
 		}	// end of else( *f == '%' )
+		/* If the current character is new line character,
+		 * or the buffer is full, flush the buffer. */
+		if ( *f == '\n' || *f == '\r' ||
+				p_buffer_ptr - p_buffer <= PRINTF_BUF_LEN - 1 )
+			flush();
 		/* Switch to the next character. */
 		++f;
 	}	// end of while( *f != '\0' )
