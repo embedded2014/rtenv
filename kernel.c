@@ -398,8 +398,8 @@ void queue_str_task2()
 
 void print_to_console( const char *str )
 {
-	int fdout = mq_open("/tmp/mqueue/out", 0);
-	write( fdout, str, strlen(str) + 1 );
+	/* IRQ */
+	puts( str );
 }
 
 /* @param dest_end A char pointer which points to 
