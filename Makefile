@@ -41,7 +41,8 @@ main.bin: kernel.c context_switch.s syscall.s syscall.h
 		syscall.s \
 		stm32_p103.c \
 		kernel.c \
-		memcpy.s
+		memcpy.s \
+		string-util.c
 	$(CROSS_COMPILE)objcopy -Obinary main.elf main.bin
 	$(CROSS_COMPILE)objdump -S main.elf > main.list
 
