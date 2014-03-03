@@ -83,6 +83,25 @@ char *strapp( char *dest_end, const char *source )
 	return d_e;
 }
 
+/* Copy string from source to dest. */
+char *strcpy( char *dest, const char *source )
+{
+	char *d = dest;
+	const char *s = source;
+
+	while ( ( *d++ = *s++ ) != '\0' )
+		;
+
+	return dest;
+}
+
+/* C Standard Function */
+char *strcat( char *dest, const char *source )
+{
+	strcpy( &dest[strlen(dest)], source );
+	return dest;
+}
+
 /* To not to call print_to_console function frequently,
  * use buffered string. If the buffer is full, a new-line
  * is added to buffer, or flush() is called, the buffer

@@ -10,6 +10,8 @@ size_t strlen(const char *s);
 void puts(const char *s);
 void print_to_console( const char *str );
 char *strapp( char *dest_end, const char *source );
+char *strcpy( char *dest, const char *source );
+char *strcat( char *dest, const char *source );
 void flush();
 int printf( const char *format, ... );
 
