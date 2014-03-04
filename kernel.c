@@ -91,6 +91,9 @@ void puts(char *s)
 
 #define O_CREAT 4
 
+#define INIT_CURSOR "\033[0;0H"
+#define EMPTY_SC "\033[2J"
+
 /*Global Variables*/
 char next_line[3] = {'\n','\r','\0'};
 size_t task_count = 0;
@@ -813,7 +816,11 @@ int p_atoi(const char *str)
 
 void show_clear(int argc,char *argv[])
 {
-	write(fdout,"\033[0;0H\033[2J",17);
+	//move cursor to (0,0)
+	write(fdout,INIT_CURSOR,strlen(INIT_CURSOR)+1);
+	
+	//clear the screen
+	write(fdout,EMPTY_SC,strlen(EMPTY_SC)+1);
 	write(fdout,next_line,3);
 }
 
