@@ -7,12 +7,9 @@
 SysTick_Handler:
 USART2_IRQHandler:
 	mrs r0, psp
-	/*stmdb r0!, {r7}*/
 	stmdb r0!, {r8}
 
 	/* Get ISR number */
-	/*mrs r7, ipsr*/
-	/*neg r7, r7*/
 	mrs r8, ipsr
 	neg r8, r8
 
@@ -30,7 +27,6 @@ USART2_IRQHandler:
 SVC_Handler:
 	/* save user state */
 	mrs r0, psp
-	/*stmdb r0!, {r7}*/
 	stmdb r0!, {r8}
 	stmdb r0!, {r4, r5, r6, r7, r8, r9, r10, r11, lr}
 
@@ -53,7 +49,6 @@ activate:
 	
 	/* load user state */
 	pop {r4, r5, r6, r7, r8, r9, r10, r11, lr}
-	/*pop {r7}*/
 	pop {r8}
 
 	bx lr
