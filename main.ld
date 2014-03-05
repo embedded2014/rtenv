@@ -15,10 +15,17 @@ SECTIONS
  		*(.text.*)
 		*(.rodata)
 		*(.rodata*)
-		_sidata = .;
+                
+                user_program_start = ALIGN(0x4);
+                KEEP(*(.user_program))
+                user_program_end = .;
+		_sidata = .;   
+                               
 	} >FLASH
-
-	/* Initialized data will initially be loaded in FLASH at the end of the .text section. */
+      
+   
+	
+     /* Initialized data will initially be loaded in FLASH at the end of the .text section. */
     .data : AT (_sidata) 
     {
 		_sdata = .;

@@ -14,7 +14,7 @@ CMSIS_PLAT_SRC = $(CMSIS_LIB)/DeviceSupport/$(VENDOR)/$(PLAT)
 
 all: main.bin
 
-main.bin: kernel.c context_switch.s syscall.s syscall.h
+main.bin: kernel.c context_switch.s syscall.s syscall.h user_program.o link.h
 	$(CROSS_COMPILE)gcc \
 		-DUSER_NAME=\"$(USER)\" \
 		-Wl,-Tmain.ld -nostartfiles \
@@ -41,9 +41,18 @@ main.bin: kernel.c context_switch.s syscall.s syscall.h
 		syscall.s \
 		stm32_p103.c \
 		kernel.c \
-		memcpy.s
+		memcpy.s \
+ 		link.h\
+                user_program.o
+	
 	$(CROSS_COMPILE)objcopy -Obinary main.elf main.bin
 	$(CROSS_COMPILE)objdump -S main.elf > main.list
+
+user_program.o : user_program.c link.h
+	$(CROSS_COMPILE)gcc \
+		-e test_main -nostartfiles -nostdlib \
+		-mcpu=cortex-m3 -mthumb \
+                -o user_program.o user_program.c link.h
 
 qemu: main.bin $(QEMU_STM32)
 	$(QEMU_STM32) -M stm32-p103 -kernel main.bin
@@ -90,4 +99,4 @@ qemuauto_remote: main.bin gdbscript
 	sleep 5
 
 clean:
-	rm -f *.elf *.bin *.list
+	rm -f *.elf *.bin *.list *.o

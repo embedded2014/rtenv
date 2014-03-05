@@ -1,0 +1,6 @@
+(gdb) 1393058707:63350 quit
+A debugging session is active.
+
+	Inferior 1 [Remote target] will be killed.
+
+Quit anyway? (y or n) [answered Y; input not from terminal]
