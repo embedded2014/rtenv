@@ -6,6 +6,9 @@
 /* String operation library */
 #include "string-util.h"
 
+/* Unit test */
+#include "unit_test.h"
+
 #define MAX_CMDNAME 19
 #define MAX_ARGC 19
 #define MAX_CMDHELP 1023
@@ -1204,6 +1207,8 @@ int main()
 		while (ready_list[i] == NULL)
 			i++;
 		current_task = task_pop(&ready_list[i])->pid;
+
+		unit_test();
 	}
 
 	return 0;
