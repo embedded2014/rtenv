@@ -14,5 +14,6 @@ char *strcpy( char *dest, const char *source );
 char *strcat( char *dest, const char *source );
 void flush();
 int printf( const char *format, ... );
+void itoa( int n, char *dst, int base );
 
 #endif	/* STRING_UTIL */
