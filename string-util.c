@@ -181,7 +181,7 @@ void itoa( int n, char *dst, int base )
 		*--p = '0';
 	else {
 		char *q;
-		unsigned int num = (base == 10 && num < 0) ? -n : n;
+		unsigned int num = (base == 10 && n < 0) ? -n : n;
 
 		for (; num; num/=base)
 			*--p = "0123456789ABCDEF" [num % base];
