@@ -2,7 +2,7 @@ file main.elf
 target remote :3333
 b unit_test.c:8
 c
-call itoa( 12, unitTestResult, 10 )
-printf "%s\n", unitTestResult
-call itoa( -12, unitTestResult, 10 )
-printf "%s\n", unitTestResult
+call itoa( 12, utString, 10 )
+printf "%s\n", utString
+call itoa( -12, utString, 10 )
+printf "%s\n", utString
