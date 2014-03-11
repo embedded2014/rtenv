@@ -3,62 +3,11 @@
 
 #include "syscall.h"
 
-#include <stddef.h>
+/* String operation library */
+#include "string-util.h"
 
-void *memcpy(void *dest, const void *src, size_t n);
-
-int strcmp(const char *a, const char *b) __attribute__ ((naked));
-int strcmp(const char *a, const char *b)
-{
-	asm(
-        "strcmp_lop:                \n"
-        "   ldrb    r2, [r0],#1     \n"
-        "   ldrb    r3, [r1],#1     \n"
-        "   cmp     r2, #1          \n"
-        "   it      hi              \n"
-        "   cmphi   r2, r3          \n"
-        "   beq     strcmp_lop      \n"
-		"	sub     r0, r2, r3  	\n"
-        "   bx      lr              \n"
-		:::
-	);
-}
-
-int strncmp(const char *a, const char *b, size_t n)
-{
-	size_t i;
-
-	for (i = 0; i < n; i++)
-		if (a[i] != b[i])
-			return a[i] - b[i];
-
-	return 0;
-}
-
-size_t strlen(const char *s) __attribute__ ((naked));
-size_t strlen(const char *s)
-{
-	asm(
-		"	sub  r3, r0, #1			\n"
-        "strlen_loop:               \n"
-		"	ldrb r2, [r3, #1]!		\n"
-		"	cmp  r2, #0				\n"
-        "   bne  strlen_loop        \n"
-		"	sub  r0, r3, r0			\n"
-		"	bx   lr					\n"
-		:::
-	);
-}
-
-void puts(char *s)
-{
-	while (*s) {
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
-			/* wait */ ;
-		USART_SendData(USART2, *s);
-		s++;
-	}
-}
+/* Unit test */
+#include "unit_test.h"
 
 #define MAX_CMDNAME 19
 #define MAX_ARGC 19
@@ -431,6 +380,9 @@ void serial_readwrite_task()
 	}
 }
 
+#define ESC			27
+#define BACKSPACE	127
+
 void serial_test_task()
 {
 	char put_ch[2]={'0','\0'};
@@ -447,22 +399,43 @@ void serial_test_task()
 		write(fdout, hint, hint_length);
 
 		while (1) {
+			/* Get a character from keyboard. */
 			read(fdin, put_ch, 1);
 
+			/* New line recieved */
 			if (put_ch[0] == '\r' || put_ch[0] == '\n') {
 				*p = '\0';
-				write(fdout, next_line, 3);
+				print_to_console( next_line );
 				break;
 			}
-			else if (put_ch[0] == 127 || put_ch[0] == '\b') {
+			/* Back space recieved */
+			else if (put_ch[0] == BACKSPACE || put_ch[0] == '\b') {
 				if (p > cmd[cur_his]) {
 					p--;
-					write(fdout, "\b \b", 4);
+					print_to_console( "\b \b" );
 				}
 			}
+			/* Function/Arrow Key pressed. */
+			else if ( put_ch[0] == ESC )
+			{
+				/* Function Key: ESC[1~ ~ ESC[6~
+				 * Arrow Key: ESC[A ~ ESC[D
+				 */
+				read( fdin, put_ch, 1 );
+
+				if ( put_ch[0] == '[' )
+				{
+					read( fdin, put_ch, 1 );
+					/* Function Key */
+					if ( put_ch[0] > '0' && put_ch[0] < '7' )
+						/* Discard '~' */
+						read( fdin, put_ch, 1 );
+				}
+			}
+			/* Vaild characters: Get the character and display it */
 			else if (p - cmd[cur_his] < CMDBUF_SIZE - 1) {
 				*p++ = put_ch[0];
-				write(fdout, put_ch, 2);
+				print_to_console( put_ch );
 			}
 		}
 		check_keyword();	
@@ -534,11 +507,8 @@ void check_keyword()
 			break;
 		}
 	}
-	if (i == CMD_COUNT) {
-		write(fdout, argv[0], strlen(argv[0]) + 1);
-		write(fdout, ": command not found", 20);
-		write(fdout, next_line, 3);
-	}
+	if (i == CMD_COUNT)
+		printf( "%s: command not found\n\r", argv[0] );
 }
 
 void find_events()
@@ -648,71 +618,34 @@ void export_envvar(int argc, char *argv[])
 //ps
 void show_task_info(int argc, char* argv[])
 {
-	char ps_message[]="PID STATUS PRIORITY";
-	int ps_message_length = sizeof(ps_message);
-	int task_i;
-	int task;
-
-	write(fdout, &ps_message , ps_message_length);
-	write(fdout, &next_line , 3);
+	int task_i, task;
+	char *task_status[] = {
+		"READY\t",
+		"WAIT_WRITE",
+		"WAIT_READ",
+		"WAIT_INTR",
+		"WAIT_TIME"
+	};
+	/* The title of the list */
+	printf( "PID     STATUS\t    PRIORITY\n\r" );
 
 	for (task_i = 0; task_i < task_count; task_i++) {
-		char task_info_pid[2];
-		char task_info_status[2];
-		char task_info_priority[3];
-
-		task_info_pid[0]='0'+tasks[task_i].pid;
-		task_info_pid[1]='\0';
-		task_info_status[0]='0'+tasks[task_i].status;
-		task_info_status[1]='\0';			
-
-		itoa(tasks[task_i].priority, task_info_priority, 10);
-
-		write(fdout, &task_info_pid , 2);
-		write_blank(3);
-			write(fdout, &task_info_status , 2);
-		write_blank(5);
-		write(fdout, &task_info_priority , 3);
-
-		write(fdout, &next_line , 3);
+		printf( "%i\t%s\t%i\n\r", \
+				tasks[task_i].pid, \
+				task_status[tasks[task_i].status], \
+				tasks[task_i].priority );
 	}
-}
-
-//this function helps to show int
-
-void itoa(int n, char *dst, int base)
-{
-	char buf[33] = {0};
-	char *p = &buf[32];
-
-	if (n == 0)
-		*--p = '0';
-	else {
-		char *q;
-		unsigned int num = (base == 10 && num < 0) ? -n : n;
-
-		for (; num; num/=base)
-			*--p = "0123456789ABCDEF" [num % base];
-		if (base == 10 && n < 0)
-			*--p = '-';
-	}
-
-	strcpy(dst, p);
 }
 
 //help
 
 void show_cmd_info(int argc, char* argv[])
 {
-	const char help_desp[] = "This system has commands as follow\n\r\0";
 	int i;
 
-	write(fdout, &help_desp, sizeof(help_desp));
+	printf( "This system had commands as follow\n\r" );
 	for (i = 0; i < CMD_COUNT; i++) {
-		write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-		write(fdout, ": ", 3);
-		write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-		write(fdout, next_line, 3);
+		printf( "%s: %s\n\r", cmd_data[i].cmd, cmd_data[i].description );
 	}
 }
 
@@ -731,13 +664,13 @@ void show_echo(int argc, char* argv[])
 	}
 
 	for (; i < argc; i++) {
-		write(fdout, argv[i], strlen(argv[i]) + 1);
+		print_to_console( argv[i] );
 		if (i < argc - 1)
-			write(fdout, " ", 2);
+			print_to_console( " " );
 	}
 
 	if (~flag & _n)
-		write(fdout, next_line, 3);
+		print_to_console( next_line );
 }
 
 //man
@@ -754,12 +687,7 @@ void show_man_page(int argc, char *argv[])
 	if (i >= CMD_COUNT)
 		return;
 
-	write(fdout, "NAME: ", 7);
-	write(fdout, cmd_data[i].cmd, strlen(cmd_data[i].cmd) + 1);
-	write(fdout, next_line, 3);
-	write(fdout, "DESCRIPTION: ", 14);
-	write(fdout, cmd_data[i].description, strlen(cmd_data[i].description) + 1);
-	write(fdout, next_line, 3);
+	printf( "NAME: %s\n\rDESCRIPTION: %s\n\r", cmd_data[i].cmd, cmd_data[i].description );
 }
 
 void show_history(int argc, char *argv[])
@@ -768,8 +696,7 @@ void show_history(int argc, char *argv[])
 
 	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
 		if (cmd[i % HISTORY_COUNT][0]) {
-			write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
-			write(fdout, next_line, 3);
+			printf( "%s\n\r", cmd[ i % HISTORY_COUNT ] );
 		}
 	}
 }
@@ -1132,7 +1059,7 @@ int main()
 		tasks[current_task].status = TASK_READY;
 		timeup = 0;
 
-		switch (tasks[current_task].stack->r7) {
+		switch (tasks[current_task].stack->r8) {
 		case 0x1: /* fork */
 			if (task_count == TASK_LIMIT) {
 				/* Cannot create a new task, return error */
@@ -1216,8 +1143,8 @@ int main()
 			}
 			break;
 		default: /* Catch all interrupts */
-			if ((int)tasks[current_task].stack->r7 < 0) {
-				unsigned int intr = -tasks[current_task].stack->r7 - 16;
+			if ((int)tasks[current_task].stack->r8 < 0) {
+				unsigned int intr = -tasks[current_task].stack->r8 - 16;
 
 				if (intr == SysTick_IRQn) {
 					/* Never disable timer. We need it for pre-emption */
@@ -1258,6 +1185,8 @@ int main()
 		while (ready_list[i] == NULL)
 			i++;
 		current_task = task_pop(&ready_list[i])->pid;
+
+		unit_test();
 	}
 
 	return 0;
