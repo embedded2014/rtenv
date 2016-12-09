@@ -91,6 +91,9 @@ void puts(char *s)
 
 #define O_CREAT 4
 
+#define INIT_CURSOR "\033[0;0H"
+#define EMPTY_SC "\033[2J"
+
 /*Global Variables*/
 char next_line[3] = {'\n','\r','\0'};
 size_t task_count = 0;
@@ -106,6 +109,7 @@ void show_cmd_info(int argc, char *argv[]);
 void show_task_info(int argc, char *argv[]);
 void show_man_page(int argc, char *argv[]);
 void show_history(int argc, char *argv[]);
+void show_clear(int argc,char *argv[]);
 
 /* Enumeration for command types. */
 enum {
@@ -115,6 +119,7 @@ enum {
 	CMD_HISTORY,
 	CMD_MAN,
 	CMD_PS,
+	CMD_CLEAR,
 	CMD_COUNT
 } CMD_TYPE;
 /* Structure for command handler. */
@@ -129,7 +134,8 @@ const hcmd_entry cmd_data[CMD_COUNT] = {
 	[CMD_HELP] = {.cmd = "help", .func = show_cmd_info, .description = "List all commands you can use."},
 	[CMD_HISTORY] = {.cmd = "history", .func = show_history, .description = "Show latest commands entered."}, 
 	[CMD_MAN] = {.cmd = "man", .func = show_man_page, .description = "Manual pager."},
-	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."}
+	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."},
+	[CMD_CLEAR] ={.cmd = "clear", .func = show_clear , .description = "clear the screen."}
 };
 
 /* Structure for environment variables. */
@@ -652,7 +658,7 @@ void show_task_info(int argc, char* argv[])
 	int ps_message_length = sizeof(ps_message);
 	int task_i;
 	int task;
-
+	
 	write(fdout, &ps_message , ps_message_length);
 	write(fdout, &next_line , 3);
 
@@ -762,16 +768,60 @@ void show_man_page(int argc, char *argv[])
 	write(fdout, next_line, 3);
 }
 
+
 void show_history(int argc, char *argv[])
 {
 	int i;
 
-	for (i = cur_his + 1; i <= cur_his + HISTORY_COUNT; i++) {
+	//n stands for the number of previous  records  you want to show
+	int n= argc<2?HISTORY_COUNT: (p_atoi(argv[1])>0? p_atoi(argv[1]):HISTORY_COUNT);
+	if(n>HISTORY_COUNT) n=HISTORY_COUNT;	//n will not exceed HISTORY_COUNT
+	int offset=HISTORY_COUNT-n;
+
+	for (i = cur_his + 1+offset; i <= cur_his + HISTORY_COUNT; i++) {
 		if (cmd[i % HISTORY_COUNT][0]) {
 			write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
 			write(fdout, next_line, 3);
 		}
 	}
+}
+
+//if success return positive number,or return negative number
+int p_atoi(const char *str)
+{
+	int val=0;
+
+	switch(*str)
+	{
+		case '+':
+			str++;
+			break;
+		default: 
+			break;
+	}
+
+	//preceding zero
+	while(*str=='0')
+		str++;
+	
+	while( *str)
+	{
+		if( *str>='0' && *str<='9')
+			val=val*10+(*str++)-'0';
+		else return -1;
+
+	}
+	return val;
+}
+
+void show_clear(int argc,char *argv[])
+{
+	//move cursor to (0,0)
+	write(fdout,INIT_CURSOR,strlen(INIT_CURSOR)+1);
+	
+	//clear the screen
+	write(fdout,EMPTY_SC,strlen(EMPTY_SC)+1);
+	write(fdout,next_line,3);
 }
 
 int write_blank(int blank_num)
