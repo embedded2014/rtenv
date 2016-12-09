@@ -106,6 +106,7 @@ void show_cmd_info(int argc, char *argv[]);
 void show_task_info(int argc, char *argv[]);
 void show_man_page(int argc, char *argv[]);
 void show_history(int argc, char *argv[]);
+void show_redo(int argc, char *argv[]);
 
 /* Enumeration for command types. */
 enum {
@@ -115,21 +116,25 @@ enum {
 	CMD_HISTORY,
 	CMD_MAN,
 	CMD_PS,
+	CMD_REDO,
 	CMD_COUNT
 } CMD_TYPE;
+
 /* Structure for command handler. */
 typedef struct {
 	char cmd[MAX_CMDNAME + 1];
 	void (*func)(int, char**);
 	char description[MAX_CMDHELP + 1];
 } hcmd_entry;
+
 const hcmd_entry cmd_data[CMD_COUNT] = {
 	[CMD_ECHO] = {.cmd = "echo", .func = show_echo, .description = "Show words you input."},
 	[CMD_EXPORT] = {.cmd = "export", .func = export_envvar, .description = "Export environment variables."},
 	[CMD_HELP] = {.cmd = "help", .func = show_cmd_info, .description = "List all commands you can use."},
 	[CMD_HISTORY] = {.cmd = "history", .func = show_history, .description = "Show latest commands entered."}, 
 	[CMD_MAN] = {.cmd = "man", .func = show_man_page, .description = "Manual pager."},
-	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."}
+	[CMD_PS] = {.cmd = "ps", .func = show_task_info, .description = "List all the processes."},
+	[CMD_REDO] = {.cmd = "redo", .func = show_redo, .description = "Do latest one command again."}
 };
 
 /* Structure for environment variables. */
@@ -321,7 +326,7 @@ void greeting()
 		string++;
 	}
 }
-
+/*
 void echo()
 {
 	int fdout;
@@ -336,7 +341,7 @@ void echo()
 		write(fdout, &c, 1);
 	}
 }
-
+*/
 void rs232_xmit_msg_task()
 {
 	int fdout;
@@ -762,6 +767,39 @@ void show_man_page(int argc, char *argv[])
 	write(fdout, next_line, 3);
 }
 
+void show_redo(int argc, char *argv[])
+{
+	int i=cur_his + HISTORY_COUNT-1;
+	write(fdout, cmd[i % HISTORY_COUNT], strlen(cmd[i % HISTORY_COUNT]) + 1);
+	write(fdout , ":" , 2);
+	write(fdout, next_line, 3);
+	argv[0] = cmdtok(cmd[i % HISTORY_COUNT]);
+	if (argv[0])
+	{
+		while (1) {
+		argv[argc] = cmdtok(NULL);
+		if (!argv[argc])
+			break;
+		argc++;
+		if (argc >= MAX_ARGC)
+			break;
+		}
+
+		for (i = 0; i < CMD_COUNT; i++) {
+			if (!strcmp(argv[0], cmd_data[i].cmd)) {
+				cmd_data[i].func(argc, argv);
+				break;
+			}
+		}
+		
+		if (i == CMD_COUNT) {
+			write(fdout, argv[0], strlen(argv[0]) + 1);
+			write(fdout, ": command not found", 20);
+			write(fdout, next_line, 3);
+		}
+	}
+}
+
 void show_history(int argc, char *argv[])
 {
 	int i;
@@ -1132,7 +1170,7 @@ int main()
 		tasks[current_task].status = TASK_READY;
 		timeup = 0;
 
-		switch (tasks[current_task].stack->r7) {
+		switch (tasks[current_task].stack->r8) {
 		case 0x1: /* fork */
 			if (task_count == TASK_LIMIT) {
 				/* Cannot create a new task, return error */
@@ -1216,8 +1254,8 @@ int main()
 			}
 			break;
 		default: /* Catch all interrupts */
-			if ((int)tasks[current_task].stack->r7 < 0) {
-				unsigned int intr = -tasks[current_task].stack->r7 - 16;
+			if ((int)tasks[current_task].stack->r8 < 0) {
+				unsigned int intr = -tasks[current_task].stack->r8 - 16;
 
 				if (intr == SysTick_IRQn) {
 					/* Never disable timer. We need it for pre-emption */
